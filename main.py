@@ -203,9 +203,9 @@ warped_thresh_sharp = cv2.GaussianBlur(warped_thresh, (0, 0), 1)
 warped_thresh_sharp = cv2.addWeighted(warped_thresh, 1.5, warped_thresh_sharp, -0.5, 0)
 
 # Show the sharpened image
-cv2.imshow('Sharpened', warped_thresh_sharp)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+# cv2.imshow('Sharpened', warped_thresh_sharp)
+# cv2.waitKey(0)
+# cv2.destroyAllWindows()
 
 # Iterate through each cell in the grid
 from tqdm import tqdm
@@ -243,7 +243,7 @@ for idx, (i, j) in enumerate(tqdm(itertools.product(range(num_rows), range(num_c
         
         # If the cell is mostly empty (more than 95% white pixels), skip OCR
         if non_zero_ratio > 0.95:
-            text = '-'
+            text = ' '
             grid_numbers[i][j] = text
 #            # Draw a Ø (zero with slash) on the cell image for debugging
 #            cell_with_zero = cv2.cvtColor(cell_padded, cv2.COLOR_GRAY2BGR)
@@ -280,19 +280,36 @@ for idx, (i, j) in enumerate(tqdm(itertools.product(range(num_rows), range(num_c
                 plt.title(f'Unrecognized Cell ({i},{j})')
                 plt.axis('off')
                 
-                # Create a dialog box with the plot and input field
-                from matplotlib.widgets import TextBox
-                axbox = plt.axes([0.2, 0.05, 0.6, 0.075])  # Position of text box
-                text_box = TextBox(axbox, 'Enter digit (? if unsure): ')
+                # Create buttons for digits 0-9 and ?
+                from matplotlib.widgets import Button
                 
-                def submit(text):
-                    if text.isdigit():
-                        grid_numbers[i][j] = int(text)
-                    else:
-                        grid_numbers[i][j] = '?'
-                    plt.close()
+                # Calculate button positions (3 rows x 4 cols grid)
+                button_width = 0.2
+                button_height = 0.1
+                buttons = []
                 
-                text_box.on_submit(submit)
+                def make_callback(value):
+                    def callback(event):
+                        if value == '?':
+                            grid_numbers[i][j] = '?'
+                        else:
+                            grid_numbers[i][j] = int(value)
+                        plt.close()
+                    return callback
+                
+                # Create buttons in a grid layout
+                values = [str(i) for i in range(1,10)] + ['?','0']
+                for idx, value in enumerate(values):
+                    row = idx // 3  # Keep 3 buttons per row
+                    col = idx % 3
+                    ax = plt.axes([0.2 + col * button_width, 
+                                 0.3 - row * button_height,  # Moved up from 0.2 to 0.6 to show all buttons
+                                 button_width-0.05, 
+                                 button_height-0.02])
+                    btn = Button(ax, value)
+                    btn.on_clicked(make_callback(value))
+                    buttons.append(btn)
+                
                 plt.show()
 
         
@@ -300,7 +317,7 @@ for idx, (i, j) in enumerate(tqdm(itertools.product(range(num_rows), range(num_c
         cell_display = cv2.cvtColor(cell_padded, cv2.COLOR_GRAY2BGR)
         
         # Draw the detected number (or underscore if None)
-        display_text = text if text else "_"
+        display_text = text if text else " "
         font = cv2.FONT_HERSHEY_SIMPLEX
         font_scale = 0.5
         thickness = 1
@@ -363,3 +380,11 @@ cv2.destroyAllWindows()
 print("\nExtracted Grid:")
 for row in grid_numbers:
     print(' '.join(str(cell) for cell in row))
+
+    # Save grid numbers to JSON file
+    import json
+    
+    with open('grid_numbers.json', 'w') as f:
+        json.dump(grid_numbers, f, indent=2)
+    print("\nGrid numbers saved to grid_numbers.json")
+
