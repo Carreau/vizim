@@ -150,8 +150,8 @@ def detect_grid_size_fft(image):
     return num_rows_fft, num_cols_fft
 
 # Get grid size estimation from FFT
-num_rows_fft, num_cols_fft = detect_grid_size_fft(warped_thresh)
-print(f"FFT estimated grid size: {num_rows_fft} rows x {num_cols_fft} columns")
+# num_rows_fft, num_cols_fft = detect_grid_size_fft(warped_thresh)
+# print(f"FFT estimated grid size: {num_rows_fft} rows x {num_cols_fft} columns")
 
 
 # Find peaks in the sums (these represent grid lines)
@@ -187,11 +187,11 @@ for col in col_lines:
     cv2.line(warped_with_lines, (col, 0), (col, height), (0, 0, 255), 2)
 
 # Show all images
-cv2.imshow('Original', image)
-cv2.imshow('Corrected Grid', warped)
-cv2.imshow('Detected Lines', warped_with_lines)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+# cv2.imshow('Original', image)
+# cv2.imshow('Corrected Grid', warped)
+# cv2.imshow('Detected Lines', warped_with_lines)
+# cv2.waitKey(0)
+# cv2.destroyAllWindows()
 
 
 # Now we find extract each cell and use OCR to extract the number in the cell if there is one
@@ -211,7 +211,7 @@ for idx, (i, j) in enumerate(tqdm(itertools.product(range(num_rows), range(num_c
         # since warped_thresh is white on black, we want black on white for OCR
         
         # Trim a few pixels from each edge to remove grid lines
-        margin = 3
+        margin = 5
         cell = 255 - warped_thresh[y_start+margin:y_end-margin, x_start+margin:x_end-margin]
         
         # Add padding around the cell to improve OCR
@@ -229,19 +229,43 @@ for idx, (i, j) in enumerate(tqdm(itertools.product(range(num_rows), range(num_c
 
 
         
-        text = pytesseract.image_to_string(cell_padded, config='--psm 10 --oem 3 -c tessedit_char_whitelist=0123456789 -c tessedit_char_unblocked_ratio=1.0 -c tessedit_length_penalty_punc=0.1')
-        # Clean the extracted text
-        text = text.strip()
-        if text:
-            try:
-                number = int(text)
-                grid_numbers[i][j] = number
-            except ValueError:
-                # If conversion to int fails, ignore this cell
-                pass
+        # Calculate percentage of non-zero pixels in the cell
+        non_zero_ratio = np.count_nonzero(cell_padded) / cell_padded.size
+        
+        # If the cell is mostly empty (more than 95% white pixels), skip OCR
+        if non_zero_ratio > 0.95:
+            text = '-'
+            grid_numbers[i][j] = text
+#            # Draw a Ø (zero with slash) on the cell image for debugging
+#            cell_with_zero = cv2.cvtColor(cell_padded, cv2.COLOR_GRAY2BGR)
+#            center = (cell_with_zero.shape[1] // 2, cell_with_zero.shape[0] // 2)
+#            radius = min(cell_with_zero.shape[0], cell_with_zero.shape[1]) // 4
+#            
+#            # Draw circle
+#            cv2.circle(cell_with_zero, center, radius, (0, 0, 255), 2)
+#            # Draw diagonal line
+#            start_point = (center[0] - radius, center[1] - radius)
+#            end_point = (center[0] + radius, center[1] + radius)
+#            cv2.line(cell_with_zero, start_point, end_point, (0, 0, 255), 2)
+#            
+#            cv2.imshow(f'Empty Cell {i},{j}', cell_with_zero)
+#            cv2.waitKey(1)
+#            cv2.destroyWindow(f'Empty Cell {i},{j}')
         else:
-            # already None, but be explicit
-            grid_numbers[i][j] = None
+            text = pytesseract.image_to_string(cell_padded, config='--psm 10 --oem 3 -c tessedit_char_whitelist=0123456789 -c tessedit_char_unblocked_ratio=1.0 -c tessedit_length_penalty_punc=0.1')
+            # Clean the extracted text
+            text = text.strip()
+            if text:
+                try:
+                    number = int(text)
+                    grid_numbers[i][j] = number
+                except ValueError:
+                    # If conversion to int fails, ignore this cell
+                    print('text', text, 'is not a number')
+                    pass
+            else:
+                # already None, but be explicit
+                grid_numbers[i][j] = None
 
         
         # Create a copy to draw on
