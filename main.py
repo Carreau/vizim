@@ -207,8 +207,12 @@ for idx, (i, j) in enumerate(tqdm(itertools.product(range(num_rows), range(num_c
         x_start = col_lines[j]
         x_end = col_lines[j + 1]
         
-        # Extract the cell image
-        cell = warped[y_start:y_end, x_start:x_end]
+        # Extract the cell image from the already thresholded full image and invert it
+        # since warped_thresh is white on black, we want black on white for OCR
+        
+        # Trim a few pixels from each edge to remove grid lines
+        margin = 3
+        cell = 255 - warped_thresh[y_start+margin:y_end-margin, x_start+margin:x_end-margin]
         
         # Add padding around the cell to improve OCR
         padding = 5
@@ -216,35 +220,50 @@ for idx, (i, j) in enumerate(tqdm(itertools.product(range(num_rows), range(num_c
             cell,
             padding, padding, padding, padding,
             cv2.BORDER_CONSTANT,
-            value=[255, 255, 255]
+            value=255
         )
         
-        # Convert to grayscale if not already
-        if len(cell_padded.shape) == 3:
-            cell_padded = cv2.cvtColor(cell_padded, cv2.COLOR_BGR2GRAY)
-            
-        # Threshold to get black text on white background
-        _, cell_thresh = cv2.threshold(cell_padded, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        
         # Use pytesseract to extract text
-        try:
-            import pytesseract
-            # Show the thresholded cell for debugging
-            cv2.imshow(f'Cell {i},{j}', cell_thresh)
-            cv2.waitKey(1)  # Brief delay to allow window updates
-            text = pytesseract.image_to_string(cell_thresh, config='--psm 10 --oem 3 -c tessedit_char_whitelist=0123456789')
-            # Clean the extracted text
-            text = text.strip()
-            if text:
-                try:
-                    number = int(text)
-                    grid_numbers[i][j] = number
-                except ValueError:
-                    # If conversion to int fails, ignore this cell
-                    pass
-        except ImportError:
-            print("Pytesseract not installed. Please install it to enable OCR functionality.")
-            break
+        import pytesseract
+        # Show the padded cell for debugging
+
+
+        
+        text = pytesseract.image_to_string(cell_padded, config='--psm 10 --oem 3 -c tessedit_char_whitelist=0123456789 -c tessedit_char_unblocked_ratio=1.0 -c tessedit_length_penalty_punc=0.1')
+        # Clean the extracted text
+        text = text.strip()
+        if text:
+            try:
+                number = int(text)
+                grid_numbers[i][j] = number
+            except ValueError:
+                # If conversion to int fails, ignore this cell
+                pass
+        else:
+            # already None, but be explicit
+            grid_numbers[i][j] = None
+
+        
+        # Create a copy to draw on
+        cell_display = cv2.cvtColor(cell_padded, cv2.COLOR_GRAY2BGR)
+        
+        # Draw the detected number (or underscore if None)
+        display_text = text if text else "_"
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.5
+        thickness = 1
+        (text_width, text_height), _ = cv2.getTextSize(display_text, font, font_scale, thickness)
+        
+        # Calculate position to center text
+        text_x = (cell_display.shape[1] - text_width) // 2
+        text_y = (cell_display.shape[0] + text_height) // 2
+        
+        cv2.putText(cell_display, display_text, (text_x, text_y), 
+                   font, font_scale, (0, 0, 255), thickness)
+        
+        cv2.imshow(f'Cell {i},{j}', cell_display)
+        cv2.waitKey(1)
+        cv2.destroyWindow(f'Cell {i},{j}')
 
 # Create a copy of the original image to draw on
 grid_overlay = warped.copy()
