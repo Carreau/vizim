@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 import itertools
+from solve import prepare, loop
 
 # Read the image
 image = cv2.imread('grid.png')
@@ -372,19 +373,99 @@ for i in range(num_rows):
 # Display the overlay
 cv2.imshow('Detected Grid and Numbers', grid_overlay)
 cv2.waitKey(0)
-cv2.destroyAllWindows()
+
+
+padded_grid, drawing = prepare(grid_numbers)
+
+# Create a copy for red overlay
+red_overlay = grid_overlay.copy()
+
+# Calculate cell coordinates for position 3,3 
+x1 = col_lines[3]
+x2 = col_lines[4] 
+y1 = row_lines[3]
+y2 = row_lines[4]
+
+# Add red overlay
+overlay = red_overlay.copy()
+cv2.rectangle(overlay, (x1, y1), (x2, y2), (0, 0, 255), -1)
+cv2.addWeighted(overlay, 0.3, red_overlay, 0.7, 0, red_overlay)
+
+# Show red overlay
+cv2.imshow('Detected Grid and Numbers', red_overlay)
+cv2.waitKey(1000)  # Wait 1 second
+
+# Show original overlay again
+cv2.imshow('Detected Grid and Numbers', grid_overlay)
+cv2.waitKey(1)
+
+step_overlay = grid_overlay.copy()
+
+red_current = None
+
+for step in loop(drawing, padded_grid):
+
+    if step is not None:
+        red_current = step
+    # Create a copy of grid_overlay for each step
+    step_overlay = grid_overlay.copy()
+    
+    # Draw filled cells in green where drawing has 1s
+    for i in range(1, drawing.shape[0]-1):
+        for j in range(1, drawing.shape[1]-1):
+            if drawing[i,j] == 1:
+                # Calculate cell coordinates
+                x1 = col_lines[j-1]
+                x2 = col_lines[j]
+                y1 = row_lines[i-1] 
+                y2 = row_lines[i]
+                
+                # Fill cell with semi-transparent green
+                overlay = step_overlay.copy()
+                cv2.rectangle(overlay, (x1, y1), (x2, y2), (0, 255, 0), -1)
+                cv2.addWeighted(overlay, 0.3, step_overlay, 0.7, 0, step_overlay)
+            if drawing[i,j] == 0:
+                # Calculate cell coordinates
+                x1 = col_lines[j-1]
+                x2 = col_lines[j]
+                y1 = row_lines[i-1] 
+                y2 = row_lines[i]
+                
+                # Fill cell with semi-transparent blue
+                overlay = step_overlay.copy()
+                cv2.rectangle(overlay, (x1, y1), (x2, y2), (255, 0, 0), -1)
+                cv2.addWeighted(overlay, 0.3, step_overlay, 0.7, 0, step_overlay)
+
+    # Calculate cell coordinates for position i,j
+    show_grid = step_overlay.copy()
+    if red_current is not None:
+        i, j = red_current
+        x1 = col_lines[j-1]
+        x2 = col_lines[j]
+        y1 = row_lines[i-1]
+        y2 = row_lines[i]
+
+        # Add red overlay for current cell being processed
+        red_overlay = grid_overlay.copy()
+        cv2.rectangle(red_overlay, (x1, y1), (x2, y2), (0, 0, 255), -1)
+        cv2.addWeighted(red_overlay, 0.3, show_grid, 0.7, 0, show_grid)
+
+    # Show overlay with red highlight
+    cv2.imshow('Detected Grid and Numbers', show_grid)
+
+    cv2.waitKey(0)
 
 
 # Print the extracted grid
 
-print("\nExtracted Grid:")
-for row in grid_numbers:
-    print(' '.join(str(cell) for cell in row))
-
-    # Save grid numbers to JSON file
-    import json
-    
-    with open('grid_numbers.json', 'w') as f:
-        json.dump(grid_numbers, f, indent=2)
-    print("\nGrid numbers saved to grid_numbers.json")
+#print("\nExtracted Grid:")
+#for row in grid_numbers:
+#    print(' '.join(str(cell) for cell in row))
+#
+#    # Save grid numbers to JSON file
+#    import json
+#    
+#    with open('grid_numbers.json', 'w') as f:
+#        json.dump(grid_numbers, f, indent=2)
+#    print("\nGrid numbers saved to grid_numbers.json")
 
