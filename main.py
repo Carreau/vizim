@@ -265,7 +265,7 @@ for idx, (i, j) in enumerate(tqdm(itertools.product(range(num_rows), range(num_c
                     pass
             else:
                 # already None, but be explicit
-                grid_numbers[i][j] = None
+                grid_numbers[i][j] = '?'
 
         
         # Create a copy to draw on
@@ -282,12 +282,12 @@ for idx, (i, j) in enumerate(tqdm(itertools.product(range(num_rows), range(num_c
         text_x = (cell_display.shape[1] - text_width) // 2
         text_y = (cell_display.shape[0] + text_height) // 2
         
-        cv2.putText(cell_display, display_text, (text_x, text_y), 
-                   font, font_scale, (0, 0, 255), thickness)
+        # cv2.putText(cell_display, display_text, (text_x, text_y), 
+        #            font, font_scale, (0, 0, 255), thickness)
         
-        cv2.imshow(f'Cell {i},{j}', cell_display)
-        cv2.waitKey(1)
-        cv2.destroyWindow(f'Cell {i},{j}')
+        # cv2.imshow(f'Cell {i},{j}', cell_display)
+        # cv2.waitKey(1)
+        # cv2.destroyWindow(f'Cell {i},{j}')
 
 # Create a copy of the original image to draw on
 grid_overlay = warped.copy()
