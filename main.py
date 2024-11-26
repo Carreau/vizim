@@ -57,9 +57,50 @@ if len(approx) == 4:
     M = cv2.getPerspectiveTransform(rect, dst)
     warped = cv2.warpPerspective(image, M, (width, height))
     
-    # Show both original and corrected images
+    # Convert warped image to grayscale and apply threshold
+    warped_gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
+    _, warped_thresh = cv2.threshold(warped_gray, 127, 255, cv2.THRESH_BINARY_INV)
+    
+    # Sum the pixels along rows and columns
+    row_sum = np.sum(warped_thresh, axis=1)
+    col_sum = np.sum(warped_thresh, axis=0)
+    
+    # Find peaks in the sums (these represent grid lines)
+    row_peaks = np.where(row_sum > 0.5 * np.max(row_sum))[0]
+    col_peaks = np.where(col_sum > 0.5 * np.max(col_sum))[0]
+    
+    # Group nearby peaks to identify unique grid lines
+    def group_peaks(peaks, min_distance=10):
+        if len(peaks) == 0:
+            return []
+        groups = [[peaks[0]]]
+        for peak in peaks[1:]:
+            if peak - groups[-1][-1] <= min_distance:
+                groups[-1].append(peak)
+            else:
+                groups.append([peak])
+        return [int(np.mean(group)) for group in groups]
+    
+    row_lines = group_peaks(row_peaks)
+    col_lines = group_peaks(col_peaks)
+    
+    # Number of cells is one less than number of lines
+    num_rows = len(row_lines) - 1
+    num_cols = len(col_lines) - 1
+    
+    print(f"Detected grid size: {num_rows} rows x {num_cols} columns")
+    
+    # Optional: Draw the detected lines on the warped image
+    warped_with_lines = warped.copy()
+    for row in row_lines:
+        cv2.line(warped_with_lines, (0, row), (width, row), (0, 0, 255), 2)
+    for col in col_lines:
+        cv2.line(warped_with_lines, (col, 0), (col, height), (0, 0, 255), 2)
+    
+    # Show all images
     cv2.imshow('Original', image)
     cv2.imshow('Corrected Grid', warped)
+    cv2.imshow('Detected Lines', warped_with_lines)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 else:
