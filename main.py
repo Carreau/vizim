@@ -72,28 +72,28 @@ row_sum = np.sum(warped_thresh, axis=1)
 col_sum = np.sum(warped_thresh, axis=0)
 
 # Plot row and column sums for debugging
-plt.figure(figsize=(12, 4))
+# plt.figure(figsize=(12, 4))
 
 THRESHOLD = 0.3
 
-plt.subplot(121)
-plt.plot(row_sum)
-plt.title('Row Sums')
-plt.xlabel('Row Index')
-plt.ylabel('Sum of Pixels')
-plt.axhline(y=THRESHOLD * np.max(row_sum), color='r', linestyle='--', label='Threshold')
-plt.legend()
+# plt.subplot(121)
+# plt.plot(row_sum)
+# plt.title('Row Sums')
+# plt.xlabel('Row Index')
+# plt.ylabel('Sum of Pixels')
+# plt.axhline(y=THRESHOLD * np.max(row_sum), color='r', linestyle='--', label='Threshold')
+# plt.legend()
 
-plt.subplot(122)
-plt.plot(col_sum)
-plt.title('Column Sums')
-plt.xlabel('Column Index')
-plt.ylabel('Sum of Pixels')
-plt.axhline(y=THRESHOLD * np.max(col_sum), color='r', linestyle='--', label='Threshold')
-plt.legend()
+# plt.subplot(122)
+# plt.plot(col_sum)
+# plt.title('Column Sums')
+# plt.xlabel('Column Index')
+# plt.ylabel('Sum of Pixels')
+# plt.axhline(y=THRESHOLD * np.max(col_sum), color='r', linestyle='--', label='Threshold')
+# plt.legend()
 
-plt.tight_layout()
-plt.show()
+# plt.tight_layout()
+# plt.show()
 
 # Also try to detect grid size using FFT
 def detect_grid_size_fft(image):
@@ -279,9 +279,21 @@ for idx, (i, j) in enumerate(tqdm(itertools.product(range(num_rows), range(num_c
                 plt.imshow(cell_padded, cmap='gray')
                 plt.title(f'Unrecognized Cell ({i},{j})')
                 plt.axis('off')
+                
+                # Create a dialog box with the plot and input field
+                from matplotlib.widgets import TextBox
+                axbox = plt.axes([0.2, 0.05, 0.6, 0.075])  # Position of text box
+                text_box = TextBox(axbox, 'Enter digit (? if unsure): ')
+                
+                def submit(text):
+                    if text.isdigit():
+                        grid_numbers[i][j] = int(text)
+                    else:
+                        grid_numbers[i][j] = '?'
+                    plt.close()
+                
+                text_box.on_submit(submit)
                 plt.show()
-                plt.close()
-                grid_numbers[i][j] = '?'
 
         
         # Create a copy to draw on
@@ -350,4 +362,4 @@ cv2.destroyAllWindows()
 
 print("\nExtracted Grid:")
 for row in grid_numbers:
-    print(row)
+    print(' '.join(str(cell) for cell in row))
