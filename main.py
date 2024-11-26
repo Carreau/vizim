@@ -65,9 +65,34 @@ if len(approx) == 4:
     row_sum = np.sum(warped_thresh, axis=1)
     col_sum = np.sum(warped_thresh, axis=0)
     
+    # Plot row and column sums for debugging
+    import matplotlib.pyplot as plt
+    plt.figure(figsize=(12, 4))
+
+    THRESHOLD = 0.3
+    
+    plt.subplot(121)
+    plt.plot(row_sum)
+    plt.title('Row Sums')
+    plt.xlabel('Row Index')
+    plt.ylabel('Sum of Pixels')
+    plt.axhline(y=THRESHOLD * np.max(row_sum), color='r', linestyle='--', label='Threshold')
+    plt.legend()
+    
+    plt.subplot(122)
+    plt.plot(col_sum)
+    plt.title('Column Sums')
+    plt.xlabel('Column Index')
+    plt.ylabel('Sum of Pixels')
+    plt.axhline(y=THRESHOLD * np.max(col_sum), color='r', linestyle='--', label='Threshold')
+    plt.legend()
+    
+    plt.tight_layout()
+    plt.show()
+    
     # Find peaks in the sums (these represent grid lines)
-    row_peaks = np.where(row_sum > 0.5 * np.max(row_sum))[0]
-    col_peaks = np.where(col_sum > 0.5 * np.max(col_sum))[0]
+    row_peaks = np.where(row_sum > THRESHOLD * np.max(row_sum))[0]
+    col_peaks = np.where(col_sum > THRESHOLD * np.max(col_sum))[0]
     
     # Group nearby peaks to identify unique grid lines
     def group_peaks(peaks, min_distance=10):
