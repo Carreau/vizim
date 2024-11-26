@@ -198,6 +198,15 @@ for col in col_lines:
 # Initialize a 2D array to store the extracted numbers
 grid_numbers = [[None for _ in range(num_cols)] for _ in range(num_rows)]
 
+# can we sharpen warped_thresh to improve OCR?
+warped_thresh_sharp = cv2.GaussianBlur(warped_thresh, (0, 0), 1)
+warped_thresh_sharp = cv2.addWeighted(warped_thresh, 1.5, warped_thresh_sharp, -0.5, 0)
+
+# Show the sharpened image
+cv2.imshow('Sharpened', warped_thresh_sharp)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+
 # Iterate through each cell in the grid
 from tqdm import tqdm
 for idx, (i, j) in enumerate(tqdm(itertools.product(range(num_rows), range(num_cols)), total=num_rows*num_cols)):
@@ -265,6 +274,13 @@ for idx, (i, j) in enumerate(tqdm(itertools.product(range(num_rows), range(num_c
                     pass
             else:
                 # already None, but be explicit
+                # Debug: show the cell that couldn't be recognized
+                plt.figure(figsize=(3,3))
+                plt.imshow(cell_padded, cmap='gray')
+                plt.title(f'Unrecognized Cell ({i},{j})')
+                plt.axis('off')
+                plt.show()
+                plt.close()
                 grid_numbers[i][j] = '?'
 
         
