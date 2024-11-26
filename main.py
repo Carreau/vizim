@@ -200,7 +200,7 @@ grid_numbers = [[None for _ in range(num_cols)] for _ in range(num_rows)]
 
 # Iterate through each cell in the grid
 from tqdm import tqdm
-for i, j in itertools.product(range(num_rows), range(num_cols)):
+for idx, (i, j) in enumerate(tqdm(itertools.product(range(num_rows), range(num_cols)), total=num_rows*num_cols)):
         # Get coordinates for current cell
         y_start = row_lines[i]
         y_end = row_lines[i + 1]
