@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
+import itertools
 
 # Read the image
 image = cv2.imread('grid.png')
@@ -199,8 +200,7 @@ grid_numbers = [[None for _ in range(num_cols)] for _ in range(num_rows)]
 
 # Iterate through each cell in the grid
 from tqdm import tqdm
-for i in tqdm(range(num_rows), desc="Processing rows"):
-    for j in range(num_cols):
+for i, j in itertools.product(range(num_rows), range(num_cols)):
         # Get coordinates for current cell
         y_start = row_lines[i]
         y_end = row_lines[i + 1]
@@ -229,6 +229,9 @@ for i in tqdm(range(num_rows), desc="Processing rows"):
         # Use pytesseract to extract text
         try:
             import pytesseract
+            # Show the thresholded cell for debugging
+            cv2.imshow(f'Cell {i},{j}', cell_thresh)
+            cv2.waitKey(1)  # Brief delay to allow window updates
             text = pytesseract.image_to_string(cell_thresh, config='--psm 10 --oem 3 -c tessedit_char_whitelist=0123456789')
             # Clean the extracted text
             text = text.strip()
