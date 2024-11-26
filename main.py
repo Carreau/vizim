@@ -94,6 +94,65 @@ plt.legend()
 plt.tight_layout()
 plt.show()
 
+# Also try to detect grid size using FFT
+def detect_grid_size_fft(image):
+    # Convert to grayscale if not already
+    if len(image.shape) > 2:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = image
+        
+    # Apply FFT
+    f = np.fft.fft2(gray)
+    fshift = np.fft.fftshift(f)
+    magnitude_spectrum = 20*np.log(np.abs(fshift))
+    
+    # Get the 1D FFT for rows and columns
+    row_fft = np.sum(magnitude_spectrum, axis=1)
+    col_fft = np.sum(magnitude_spectrum, axis=0)
+    
+    # Find peaks in FFT
+    from scipy.signal import find_peaks
+    row_peaks, _ = find_peaks(row_fft, height=np.mean(row_fft))
+    col_peaks, _ = find_peaks(col_fft, height=np.mean(col_fft))
+    
+    # The distance between peaks in frequency domain corresponds to grid spacing
+    if len(row_peaks) > 1:
+        row_spacing = np.median(np.diff(row_peaks))
+        num_rows_fft = int(gray.shape[0] / row_spacing)
+    else:
+        num_rows_fft = 0
+        
+    if len(col_peaks) > 1:
+        col_spacing = np.median(np.diff(col_peaks))
+        num_cols_fft = int(gray.shape[1] / col_spacing)
+    else:
+        num_cols_fft = 0
+    
+    # Plot FFT results
+    plt.figure(figsize=(12, 4))
+    plt.subplot(121)
+    plt.plot(row_fft)
+    plt.title('Row FFT')
+    plt.xlabel('Frequency')
+    plt.ylabel('Magnitude')
+    
+    plt.subplot(122)
+    plt.plot(col_fft)
+    plt.title('Column FFT')
+    plt.xlabel('Frequency')
+    plt.ylabel('Magnitude')
+    
+    plt.tight_layout()
+    plt.show()
+    
+    return num_rows_fft, num_cols_fft
+
+# Get grid size estimation from FFT
+num_rows_fft, num_cols_fft = detect_grid_size_fft(warped_thresh)
+print(f"FFT estimated grid size: {num_rows_fft} rows x {num_cols_fft} columns")
+
+
 # Find peaks in the sums (these represent grid lines)
 row_peaks = np.where(row_sum > THRESHOLD * np.max(row_sum))[0]
 col_peaks = np.where(col_sum > THRESHOLD * np.max(col_sum))[0]
@@ -139,7 +198,8 @@ cv2.destroyAllWindows()
 grid_numbers = [[None for _ in range(num_cols)] for _ in range(num_rows)]
 
 # Iterate through each cell in the grid
-for i in range(num_rows):
+from tqdm import tqdm
+for i in tqdm(range(num_rows), desc="Processing rows"):
     for j in range(num_cols):
         # Get coordinates for current cell
         y_start = row_lines[i]
@@ -183,7 +243,49 @@ for i in range(num_rows):
             print("Pytesseract not installed. Please install it to enable OCR functionality.")
             break
 
+# Create a copy of the original image to draw on
+grid_overlay = warped.copy()
+
+# Draw the grid lines
+for x in col_lines:
+    cv2.line(grid_overlay, (x, 0), (x, warped.shape[0]), (0, 255, 0), 2)
+for y in row_lines:
+    cv2.line(grid_overlay, (0, y), (warped.shape[1], y), (0, 255, 0), 2)
+
+# Draw detected numbers
+font = cv2.FONT_HERSHEY_SIMPLEX
+font_scale = 0.9
+font_thickness = 2
+
+for i in range(num_rows):
+    for j in range(num_cols):
+        if grid_numbers[i][j] is not None:
+            # Calculate center position of each cell
+            cell_center_x = (col_lines[j] + col_lines[j + 1]) // 2
+            cell_center_y = (row_lines[i] + row_lines[i + 1]) // 2
+            
+            # Convert number to string
+            number_str = str(grid_numbers[i][j])
+            
+            # Get text size
+            (text_width, text_height), _ = cv2.getTextSize(number_str, font, font_scale, font_thickness)
+            
+            # Calculate text position to center it in the cell
+            text_x = cell_center_x - text_width // 2
+            text_y = cell_center_y + text_height // 2
+            
+            # Draw the number
+            cv2.putText(grid_overlay, number_str, (text_x, text_y), 
+                       font, font_scale, (0, 0, 255), font_thickness)
+
+# Display the overlay
+cv2.imshow('Detected Grid and Numbers', grid_overlay)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+
+
 # Print the extracted grid
+
 print("\nExtracted Grid:")
 for row in grid_numbers:
     print(row)
